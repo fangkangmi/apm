@@ -22,6 +22,7 @@ from ..utils.path_security import safe_rmtree
 from ._helpers import (
     _build_expected_install_paths,
     _expand_with_ancestors,
+    _find_orphaned_packages,
     _scan_installed_packages,
     _standalone_installed_packages,
 )
@@ -144,8 +145,8 @@ def prune(ctx, dry_run):
         lock_keys_by_path = (
             _lock_keys_by_install_path(lockfile, apm_modules_dir) if lockfile is not None else {}
         )
-        orphaned_packages = sorted(
-            p for p in installed_packages if p not in expected_with_ancestors
+        orphaned_packages = _find_orphaned_packages(
+            installed_packages, expected_installed, standalone_installed
         )
         missing_orphaned_keys = sorted(
             dep_key

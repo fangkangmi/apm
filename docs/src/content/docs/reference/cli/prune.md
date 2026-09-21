@@ -125,6 +125,9 @@ reconciles hooks for packages and targets still declared.
 
 Notes:
 
+- Manifestless installs containing `SKILL.md` are detected even after `apm install`
+  removes their lockfile entry. Skills inside a declared or retained transitive
+  package remain part of that package and are preserved.
 - Packages that share an install root with a still-declared sibling subdirectory dependency are not falsely protected by ancestor expansion. The check uses lockfile membership (with `apm.yml` fallback) to identify genuine standalone packages.
 - A manifest embedded at any depth inside an installed package is owned by that
   package. It is not an independent dependency, orphan, or prune candidate.

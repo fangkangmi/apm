@@ -331,12 +331,28 @@ def _check_orphaned_packages():
         standalone_installed = _standalone_installed_packages(
             installed, apm_modules_dir, lockfile=lockfile
         )
-        expected_with_ancestors = _expand_with_ancestors(expected, standalone_installed)
-        # Sort for deterministic, diffable output across runs (rglob
-        # traversal order is filesystem-dependent).
-        return sorted(p for p in installed if p not in expected_with_ancestors)
+        return _find_orphaned_packages(installed, expected, standalone_installed)
     except Exception:
         return []
+
+
+def _find_orphaned_packages(
+    installed: Iterable[str], expected: set[str], standalone: Iterable[str]
+) -> list[str]:
+    """Select orphans while preserving the contents of retained install roots.
+
+    Manifestless skill bundles have no root package marker. Their nested
+    skills belong to the declared or transitive install root, even though the
+    filesystem scan discovers each skill separately. Only actual expected
+    roots protect descendants; expanded ancestors must not protect siblings.
+    """
+    expected_with_ancestors = _expand_with_ancestors(expected, standalone)
+    return sorted(
+        path
+        for path in installed
+        if path not in expected_with_ancestors
+        and not any(path.startswith(f"{root}/") for root in expected)
+    )
 
 
 # ------------------------------------------------------------------
