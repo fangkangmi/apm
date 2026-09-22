@@ -387,6 +387,29 @@ class TestPruneCommand:
             for name in ("alpha", "beta"):
                 assert (bundle / "skills" / name / "SKILL.md").read_text() == f"# {name}\n"
 
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_skill_only_orphan_root_is_not_hidden_by_declared_subdirectory(self, dry_run):
+        """A skill root gets the same standalone-orphan treatment as an apm.yml root."""
+        with self._chdir_tmp() as tmp:
+            (tmp / "apm.yml").write_text(
+                _APM_YML_NO_DEPS.replace("apm: []", "apm:\n    - owner/repo/skills/child")
+            )
+            root = tmp / "apm_modules" / "owner" / "repo"
+            child = root / "skills" / "child"
+            child.mkdir(parents=True)
+            (root / "SKILL.md").write_text("# Root skill\n")
+            (child / "SKILL.md").write_text("# Child skill\n")
+
+            assert _check_orphaned_packages() == ["owner/repo"]
+            result = self.runner.invoke(cli, ["prune", *(["--dry-run"] if dry_run else [])])
+
+            assert result.exit_code == 0, result.output
+            assert "1 orphaned package(s)" in result.output
+            assert root.exists() == dry_run
+            if dry_run:
+                assert (root / "SKILL.md").read_text() == "# Root skill\n"
+                assert (child / "SKILL.md").read_text() == "# Child skill\n"
+
     def test_prune_removes_multiple_orphans(self):
         """prune removes all orphaned packages in one pass."""
         with self._chdir_tmp() as tmp:

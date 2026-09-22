@@ -16,7 +16,12 @@ from tests.utils.isolated_apm_environment import IsolatedApmEnvironment
 from tests.utils.local_git_repository import LocalGitRepositoryFactory
 from tests.utils.local_package import LocalPackageFactory
 
-pytestmark = [pytest.mark.integration, pytest.mark.lifecycle_smoke, pytest.mark.windows_compat]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.e2e,
+    pytest.mark.lifecycle_smoke,
+    pytest.mark.windows_compat,
+]
 
 
 @pytest.mark.parametrize("alias", [None, "azure-ai-alias"])
