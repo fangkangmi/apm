@@ -350,6 +350,14 @@ MUTATIONS: tuple[MutationCase, ...] = (
         intent="InstallService stops owning the frozen-install mutation preflight.",
     ),
     MutationCase(
+        guard_id="install-deployment-immutable-requirements",
+        rule_id="install-deployment-immutable-requirements",
+        path="src/apm_cli/deps/apm_resolver.py",
+        old="requirements.add(node)",
+        new="requirements.add_unchecked(node)",
+        intent="Resolver skips canonical immutable admission before selecting a winner.",
+    ),
+    MutationCase(
         guard_id="install-deployment-install-scope-selection",
         rule_id="install-deployment-install-scope-selection",
         path="src/apm_cli/commands/install.py",
@@ -1224,6 +1232,33 @@ def test_git_semver_guard_rejects_bypassing_selected_attempt_requested_url() -> 
         violation.rule_id == "transport-platform-git-semver-preflight"
         for violation in report.violations
     )
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("if host is None and offline:", "if host is None:"),
+        ('resolved_host = host or default_host() or "github.com"', 'resolved_host = "github.com"'),
+        ("key = (resolved_host, org)", "key = (host, org)"),
+        (
+            "resolve_auth_for_host(\n                    resolved_host,",
+            "resolve_auth_for_host(\n                    host,",
+        ),
+        ("host=resolved_host,", "host=host,"),
+        ("auth_target=resolved_host,", "auth_target=host,"),
+    ],
+)
+def test_marketplace_check_guard_rejects_default_host_auth_bypass(old: str, new: str) -> None:
+    """The credential-owner guard must defend shorthand routing, not just ADO."""
+    path = "src/apm_cli/commands/marketplace/check.py"
+    source = _source(path)
+    assert source.count(old) == 1
+    mutated = source.replace(old, new, 1)
+    ast.parse(mutated, filename=path)
+    rule_id = "transport-platform-host-credential-resolution"
+    report = run_selected_rules(ROOT, (rule_id,), source_overrides={path: mutated})
+    assert report.failures == ()
+    assert any(violation.rule_id == rule_id for violation in report.violations)
 
 
 @pytest.mark.parametrize("case", MUTATIONS, ids=CASE_IDS)
