@@ -76,14 +76,6 @@ class MutationCase:
 
 MUTATIONS: tuple[MutationCase, ...] = (
     MutationCase(
-        guard_id="install-deployment-orphan-selection",
-        rule_id="install-deployment-orphan-selection",
-        path="src/apm_cli/commands/prune.py",
-        old="_find_orphaned_packages(",
-        new="_find_orphaned_packages_disabled(",
-        intent="Prune bypasses the shared declaration-aware orphan selector.",
-    ),
-    MutationCase(
         guard_id="contracts-tests-taxonomy-classification",
         rule_id="contracts-tests-taxonomy-classification",
         path="tests/quality/taxonomy_inventory_plugin.py",
@@ -404,6 +396,14 @@ MUTATIONS: tuple[MutationCase, ...] = (
         old="def resolve_mcp_registry_url(",
         new="def resolve_mcp_registry_url_disabled(",
         intent="The registry client loses the canonical MCP registry precedence resolver.",
+    ),
+    MutationCase(
+        guard_id="install-deployment-orphan-selection",
+        rule_id="install-deployment-orphan-selection",
+        path="src/apm_cli/commands/prune.py",
+        old="_find_orphaned_packages(",
+        new="_find_orphaned_packages_disabled(",
+        intent="Prune bypasses the shared declaration-aware orphan selector.",
     ),
     MutationCase(
         guard_id="install-deployment-outcome",
