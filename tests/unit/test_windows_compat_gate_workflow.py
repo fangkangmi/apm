@@ -151,7 +151,7 @@ def test_windows_compat_gate_runs_on_windows_with_bounded_timeout() -> None:
 
 def test_windows_compat_gate_selects_tests_via_registered_marker() -> None:
     """The gate must select tests declaratively via `-m windows_compat`,
-    with one explicit integration contract outside the unit-test root.
+    across unit and integration collection roots.
 
     This is the core anti-pattern guard: a future edit that reverts to
     a hardcoded file list (functionally equivalent to the old
@@ -172,16 +172,16 @@ def test_windows_compat_gate_selects_tests_via_registered_marker() -> None:
 
 
 def test_windows_compat_gate_runs_over_narrowest_maintainable_root() -> None:
-    """Run the unit root plus the one load-bearing subprocess integration contract."""
+    """Discover marked contracts without a per-file integration allowlist."""
     job = workflow_job(_ci_workflow(), GATE_JOB)
     step = workflow_step(job, GATE_STEP)
     args = _gate_pytest_args(step)
     positional = _positional_test_paths(args)
-    expected = ["tests/unit", "tests/integration/test_lifecycle_workspace_lock.py"]
+    expected = ["tests/unit", "tests/integration"]
     assert positional == expected, (
-        f"{GATE_STEP!r} must scope to the unit contracts and lifecycle subprocess "
-        f"contract {expected!r}, got: {positional!r}"
+        f"{GATE_STEP!r} must collect marked contracts from {expected!r}, got: {positional!r}"
     )
+    assert step["env"]["APM_E2E_TESTS"] == "1"
 
 
 def test_windows_compat_gate_does_not_duplicate_full_suite() -> None:

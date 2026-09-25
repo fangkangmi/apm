@@ -323,37 +323,42 @@ def _check_orphaned_packages():
             return []
 
         installed = _scan_installed_packages(apm_modules_dir)
-        # Combined lockfile-membership + package-marker fallback determines
-        # which installed paths are real standalone packages (and so
-        # must NOT be masked by ancestor expansion). The lockfile is
-        # the canonical, tamper-evident record; apm.yml/SKILL.md presence is
-        # the fallback for projects without a lockfile yet.
-        # See _expand_with_ancestors for the user-safety rationale.
-        standalone_installed = _standalone_installed_packages(
-            installed, apm_modules_dir, lockfile=lockfile
-        )
-        return _find_orphaned_packages(installed, expected, standalone_installed)
+        return _find_orphaned_packages(installed, expected)
     except Exception:
         return []
 
 
-def _find_orphaned_packages(
-    installed: Iterable[str], expected: set[str], standalone: Iterable[str]
-) -> list[str]:
-    """Select orphans while preserving the contents of retained install roots.
+def _find_orphaned_packages(installed: Iterable[str], expected: set[str]) -> list[str]:
+    """Select roots unrelated to the retained dependency graph.
 
-    Manifestless skill bundles have no root package marker. Their nested
-    skills belong to the declared or transitive install root, even though the
-    filesystem scan discovers each skill separately. Only actual expected
-    roots protect descendants; expanded ancestors must not protect siblings.
+    Keep both bundled descendants and whole roots containing needed children.
+    Ancestor prefixes protect only those containing roots, not their siblings.
+    Unlike dependency-list classification, deletion must retain recognized
+    ancestors at every depth, including aliases and hidden subdirectories.
     """
-    expected_with_ancestors = _expand_with_ancestors(expected, standalone)
-    return sorted(
-        path
-        for path in installed
-        if path not in expected_with_ancestors
-        and not any(path.startswith(f"{root}/") for root in expected)
-    )
+    roots = set()
+    retained = set(expected)
+    for path in expected:
+        try:
+            validate_path_segments(path, context="orphan selection")
+        except PathTraversalError:
+            # Invalid tokens protect only an exact match, never a wider subtree.
+            continue
+        normalized = path.replace("\\", "/")
+        roots.add(normalized)
+        parts = normalized.split("/")
+        retained.update("/".join(parts[:depth]) for depth in range(1, len(parts) + 1))
+
+    orphaned = []
+    for path in installed:
+        normalized = path.replace("\\", "/")
+        if normalized in retained:
+            continue
+        parts = normalized.split("/")
+        if any("/".join(parts[:depth]) in roots for depth in range(1, len(parts))):
+            continue
+        orphaned.append(path)
+    return sorted(orphaned)
 
 
 # ------------------------------------------------------------------
