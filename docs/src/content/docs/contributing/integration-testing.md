@@ -387,6 +387,10 @@ The required Windows compatibility gate selects `windows_compat` tests within
 `tests/unit` and `tests/integration`, with `APM_E2E_TESTS=1` for marked real-CLI
 contracts. It runs only that marker subset, not the full integration suite.
 Its collection guard requires a non-empty subset, not a fixed test count.
+Every module under those roots must import on Windows before marker deselection.
+Import Unix-only modules such as `pwd` or `fcntl` inside the helpers that need
+them, not at module scope. The collection guard checks this with Unix-only
+standard modules unavailable, even on Linux and macOS.
 Collection proves a test is selected; a successful Windows job provides
 Windows execution evidence. The existing job timeout bounds runtime.
 

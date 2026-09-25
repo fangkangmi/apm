@@ -9,7 +9,7 @@ post-merge in build-release.yml. These tests pin the focused Windows
 job that closes that gap.
 
 Selection is declarative: the job runs `pytest -m windows_compat`
-over the narrowest maintainable root (`tests/unit`) rather than
+over `tests/unit` and `tests/integration` rather than
 enumerating test files in this workflow. Adding a new Windows-relevant
 regression test therefore only requires applying the `windows_compat`
 marker (see pyproject.toml `[tool.pytest.ini_options].markers`) to the
@@ -115,14 +115,16 @@ def _positional_test_paths(args: list[str]) -> list[str]:
 
 
 def _collect_gate_family(args: list[str]) -> subprocess.CompletedProcess[str]:
-    """Collect the declared gate family without loading unrelated plugins."""
+    """Collect the gate family without plugins or Unix-only standard modules."""
     collection_env = _COLLECTION_ENV_BASELINE.copy()
     collection_env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
     return subprocess.run(
         [
             sys.executable,
-            "-m",
-            "pytest",
+            "-c",
+            "import sys, pytest; "
+            "sys.modules.update(dict.fromkeys(('pwd', 'fcntl', 'pty', 'termios'))); "
+            "raise SystemExit(pytest.main(sys.argv[1:]))",
             "-p",
             "no:cacheprovider",
             "--collect-only",
@@ -229,6 +231,7 @@ def test_windows_compat_gate_marker_selects_nonempty_subset() -> None:
 
     The workflow's root and timeout guards bound scope and runtime, not an
     arbitrary test-count ceiling that breaks when legitimate coverage grows.
+    Unix-only imports must not fail collection before marker deselection.
     """
     job = workflow_job(_ci_workflow(), GATE_JOB)
     step = workflow_step(job, GATE_STEP)
